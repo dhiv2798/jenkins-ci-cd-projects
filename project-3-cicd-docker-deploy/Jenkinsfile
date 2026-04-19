@@ -7,9 +7,11 @@ pipeline {
     IMAGE_TAG = "${BUILD_NUMBER}"
     CONTAINER_NAME = "project-3-app"
     EMAIL_TO = "venkatesangunaraj@gmail.com"
+    DOCKER_CREDENTIALS = "dockerhub-credentials"
   }
 
   stages {
+
     stage("Build") {
       steps {
         dir("${PROJECT_DIR}") {
@@ -34,7 +36,28 @@ pipeline {
     stage("Docker Build") {
       steps {
         dir("${PROJECT_DIR}") {
-          sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+          sh """
+            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+            docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+          """
+        }
+      }
+    }
+
+    // 🔥 NEW STAGE
+    stage("Push to Docker Hub") {
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: "${DOCKER_CREDENTIALS}",
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )]) {
+          sh '''
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+            docker push ${IMAGE_NAME}:latest
+          '''
         }
       }
     }
@@ -43,7 +66,11 @@ pipeline {
       steps {
         sh '''
           docker rm -f ${CONTAINER_NAME} || true
-          docker run -d --name ${CONTAINER_NAME} -p 3003:3003 ${IMAGE_NAME}:${IMAGE_TAG}
+
+          docker run -d \
+            --name ${CONTAINER_NAME} \
+            -p 3003:3003 \
+            ${IMAGE_NAME}:${IMAGE_TAG}
         '''
       }
     }
@@ -54,14 +81,14 @@ pipeline {
       mail(
         to: "${EMAIL_TO}",
         subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-        body: "Project 3 CI/CD succeeded.\\nJob: ${env.JOB_NAME}\\nBuild: #${env.BUILD_NUMBER}\\nURL: ${env.BUILD_URL}"
+        body: "Project 3 CI/CD succeeded.\nJob: ${env.JOB_NAME}\nBuild: #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
       )
     }
     failure {
       mail(
         to: "${EMAIL_TO}",
         subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-        body: "Project 3 CI/CD failed.\\nJob: ${env.JOB_NAME}\\nBuild: #${env.BUILD_NUMBER}\\nURL: ${env.BUILD_URL}"
+        body: "Project 3 CI/CD failed.\nJob: ${env.JOB_NAME}\nBuild: #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
       )
     }
   }
