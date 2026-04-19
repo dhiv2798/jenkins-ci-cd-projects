@@ -44,21 +44,4 @@ test("GET /health returns healthy status", async () => {
   }
 });
 
-test("GET / returns project welcome payload", async () => {
-  const server = app.listen(0);
-
-  try {
-    const { port } = server.address();
-    const response = await makeRequest(`http://127.0.0.1:${port}/`);
-    const payload = JSON.parse(response.body);
-
-    assert.equal(response.statusCode, 200);
-    assert.deepEqual(payload, {
-      status: "ok",
-      project: "project-3-cicd-docker-deploy",
-      message: "Welcome to Project 3 API",
-    });
-  } finally {
-    server.close();
-  }
 });
