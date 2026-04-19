@@ -7,6 +7,7 @@ pipeline {
     IMAGE_TAG = "${BUILD_NUMBER}"
     CONTAINER_NAME = "project-4-multibranch-pipeline"
     EMAIL_TO = "venkatesangunaraj@gmail.com"
+    DOCKER_CREDENTIALS = "dockerhub-credentials"
   }
 
   stages {
@@ -32,17 +33,43 @@ pipeline {
       }
     }
 
+    // 🔹 Only for master
     stage("Docker Build") {
       when {
         branch 'master'
       }
       steps {
         dir("${PROJECT_DIR}") {
-          sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+          sh """
+            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+            docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+          """
         }
       }
     }
 
+    // 🔥 PUSH STAGE (ONLY MASTER)
+    stage("Push to Docker Hub") {
+      when {
+        branch 'master'
+      }
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: "${DOCKER_CREDENTIALS}",
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )]) {
+          sh '''
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+            docker push ${IMAGE_NAME}:latest
+          '''
+        }
+      }
+    }
+
+    // 🔹 Deploy only on master
     stage("Docker Deploy (Production)") {
       when {
         branch 'master'
@@ -50,6 +77,7 @@ pipeline {
       steps {
         sh '''
           docker rm -f ${CONTAINER_NAME} || true
+
           docker run -d \
             --name ${CONTAINER_NAME} \
             -p 3004:3004 \
@@ -57,7 +85,6 @@ pipeline {
         '''
       }
     }
-
   }
 
   post {
