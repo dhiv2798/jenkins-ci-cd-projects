@@ -43,5 +43,3 @@ test("GET /health returns healthy status", async () => {
     server.close();
   }
 });
-
-});
