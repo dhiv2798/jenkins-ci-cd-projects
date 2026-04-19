@@ -36,7 +36,7 @@ test("GET /health returns healthy status", async () => {
     assert.equal(response.statusCode, 200);
     assert.deepEqual(payload, {
       status: "ok",
-      project: "project-3-cicd-docker-deploy",
+      project: "project-4-multibranch-pipeline",
       message: "Service is healthy",
     });
   } finally {
